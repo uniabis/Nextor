@@ -42,8 +42,6 @@ CP_MOD	EQU	7
 ;
 ; Entry:        DE -> FCB.
 ;
-		ld	iy,RAM_BASE##
-
 		LD	(IY+@SE_FLAGS##),SEM_SR	;OPEN searches, doesn't CREATE.
 		LD	A,ATM_HID		;Find hidden files as well.
 		LD	C,1			;Do append if necessary.
@@ -100,8 +98,6 @@ RET_ERR:	LD	HL,00FFh		;L=0FFh => error.
 ; buffers are flushed to disk.
 ;
 ;
-		ld	iy,RAM_BASE##
-
 		CALL	GET_FAB			;Setup FAB from CP/M FCB.
 
 		JR	NZ,RET_ERR
@@ -140,8 +136,6 @@ RET_ERR:	LD	HL,00FFh		;L=0FFh => error.
 ;
 	PROC	F_SFIRST
 ;
-		ld	iy,RAM_BASE##
-
 		LD	HL,FCB_EXTENT_LOW
 		ADD	HL,DE			;-> low extent byte.
 		LD	A,(HL)			;Remember search extent for
@@ -164,8 +158,6 @@ RET_ERR:	LD	HL,00FFh		;L=0FFh => error.
 ;
 ;
 	PROC	F_SNEXT
-
-		ld	iy,RAM_BASE##
 ;
 SNEXT2:		LD	DE,FIB_1##		;Get information about file
 		LD	HL,SRCH_FIB##		; to search for.
@@ -233,8 +225,6 @@ GOT_SEARCH:	PUSH	DE			;Address of directory entry.
 ; sectors have to be padded out with zeros.
 ;
 ;
-		ld	iy,RAM_BASE##
-
 		CALL	GET_FAB			;Set up FAB w/o filename.
 
 		JR	NZ,RD_ERR
@@ -283,8 +273,6 @@ RD_ERR:		LD	HL,0001			;Read error.
 ; invalidate  any data in the file buffer if it corresponds to this file.
 ;
 ;
-		ld	iy,RAM_BASE##
-
 		CALL	GET_FAB			;Set up FAB w/o filename.
 
 		JR	NZ,RD_ERR
@@ -332,8 +320,6 @@ REC_COUNT_OK:	JP	RET_NO_ERR		;Successful
 ;
 ; Entry:     DE -> FCB.
 ;
-		ld	iy,RAM_BASE##
-
 		LD	HL,FCB_EXTENT_LOW
 		ADD	HL,DE			;-> low byte of extent.
 		LD	A,(HL)			;If extent number is non-zero
@@ -364,8 +350,6 @@ NEW_CREATE:	LD	(IY+@SE_FLAGS##),0	;Extent is zero or file does
 ;
 ; Entry:   DE -> FCB.
 ;
-		ld	iy,RAM_BASE##
-
 		ld	bc,00FFh		;Store result on stack.
 		push	bc			;Save on stack throughout.
 		ld	(iy+@BUF_UNIT##),c	;Flag no file deleted yet
@@ -405,8 +389,6 @@ START_DELETE:	JR	NZ,DELETE_ERR		; if not found
 ;
 ; Entry:        DE -> FCB.
 ;
-		ld	iy,RAM_BASE##
-
 		LD	BC,00FFh		;Flag no file renamed yet
 		PUSH	BC			;Stored on stack throughout.
 		PUSH	DE			;FCB address.
@@ -460,8 +442,6 @@ RENAME_ERR:	LD	B,A			;Save any error code.
 ; Entry:        DE -> FCB.
 ;
 	PROC	F_RDRND
-
-		ld	iy,RAM_BASE##
 ;
 		LD	A,RFM_RD		;Signify doing a read function.
 		CALL	TRANSFER_RAND		;Set up FAB and do read.
@@ -512,8 +492,6 @@ RAND_ERR:	LD	HL,0001			;If error from read or write
 ;
 ; Entry:        DE -> FCB.
 ;
-		ld	iy,RAM_BASE##
-
 		LD	(IY+@SE_FLAGS),SEM_SR	;Search rather than create.
 		LD	A,ATM_HID		;Find normal + hidden files.
 		LD	C,0			;Don't follow append path.
@@ -559,8 +537,6 @@ NO_SIZE_CARRY:
 ;
 ; Entry:        DE -> FCB.
 ;
-		ld	iy,RAM_BASE##
-
 		PUSH	DE			;Put FCB address into IX.
 		POP	IX
 		CALL	SET_RAND_REC		;Set random record in CP/M FCB
@@ -1386,8 +1362,6 @@ NO_FID1:	LD	(HL),A			;Shift filename back to user's
 ;
 	PROC	F_WRBLK
 ;
-		ld	iy,RAM_BASE##
-
 		XOR	A			;Signify write function.
 ;
 BLK_ENT:	EX	AF,AF'			;Save function code.
