@@ -186,7 +186,7 @@ ram_ad	defl	DATABASE
 ;
 	var1	DSK_CHK		;Disk check control flag
 ;
-	spare	2
+	var2	CURDATE		;Packed date when no clock chip (see SET_CURDATE)
 	var1	MFLAGS		;Miscellaneous flags
 	const	FASTOUT,0	;bit 0: set for fast STROUT
 	const	FIRSTLD,1	;bit 1: set while booting NEXTOR.SYS for the first time
