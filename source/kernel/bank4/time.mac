@@ -247,17 +247,40 @@ bad_time:	ld	c,0FFh			;Return an error if the
 	PROC	CLK_INIT
 ;
 ;    This routine is called at initialisation time to set up the clock chip.
+; It probes the chip the same way the DOS 1 kernel does, and rewrites TIMFLG
+; from the result. MSXVER may already have set that flag.
 ;
 ; Entry:     None
 ; Returns:   None
-; Corrupts:   AF
+; Corrupts:   AF,BC,D
 ;
 ;
-		CLKIN	0Dh			;leave alarm bit
-		and	0100b			;
-		ld	b,a
-		inc	a			;select alarm bank
-		out	(CLOCK_DATA),a		;
+		CLKIN	0Dh			;save alarm enable (bit 2)
+		and	0100b
+		ld	d,a
+		CLKOUT	0Dh,0Ah			;alarm off, running, bank 2
+		xor	a
+		out	(CLOCK_ADDR),a		;register 0
+		ld	b,0Fh
+clk_probe:	in	a,(CLOCK_DATA)
+		and	0Fh
+		xor	b
+		out	(CLOCK_DATA),a		;modify and write back
+		ld	c,a
+		nop
+		in	a,(CLOCK_DATA)
+		and	0Fh
+		cp	c			;read back correctly?
+		jp	nz,CLK_NONE
+		xor	b
+		out	(CLOCK_DATA),a		;restore
+		djnz	clk_probe
+		ld	a,0FFh
+		ld	(TIMFLG##),a
+;
+		ld	b,d			;restore alarm enable
+		inc	d			;select alarm bank
+		CLKOUT	0Dh,d
 		CLKOUT	0Ah,01h			;insure 24-hour mode
 		CLKOUT	0Dh,b
 ;
@@ -304,6 +327,9 @@ CLK_START:	CLKIN	0Dh
 ;              D = Year
 ;
 ;
+		ld	a,(TIMFLG##)		;Use the stored date when
+		or	a			; there is no clock chip.
+		jp	z,GET_CURDATETIME
 		call	CLK_START
 		ld	e,0Dh
 		call	CLK_GET_BYTE
@@ -357,7 +383,10 @@ CLK_GET_NYBBLE:	dec	e
 ;              D = Year           /
 ;
 ;
-SET_TIME:	ld	l,e
+SET_TIME:	ld	a,(TIMFLG##)		;No clock chip: time is not
+		or	a			; stored (reads back as 00:00:00).
+		ret	z
+		ld	l,e
 		ld	h,c
 		ld	d,b
 		call	CLK_START
@@ -365,7 +394,10 @@ SET_TIME:	ld	l,e
 		ld	e,0
 		jr	set_date_time
 ;
-SET_DATE:
+SET_DATE:	ld	a,(TIMFLG##)
+		or	a
+		jr	z,SET_CURDATE		;D=year, H=month, L=day
+;
 		call	CLK_START
 		or	0001b			;select alarm bank
 		out	(CLOCK_DATA),a		;
@@ -399,6 +431,74 @@ bcd_loop:	rlc	c
 CLK_PUT_NYBBLE:	ld	b,a
 		CLKOUT	e,b
 		inc	e
+		ret
+;
+;
+;-----------------------------------------------------------------------------
+;
+; CLK_NONE
+;    No clock chip. Clear TIMFLG and fall into SET_CURDATE
+; with 1-1-1984.
+;
+CLK_NONE:	xor	a
+		ld	(TIMFLG##),a
+		ld	d,4			;1-1-1984 when there is no chip
+		ld	hl,0101h
+;
+;
+;    Store or load the date kept in CURDATE when there is no clock chip.
+; Low byte is m3 m2 m1 and the day (1...31). High byte is the year
+; (0=1980 ... 99=2079) shifted left one, with m0 in bit 0.
+; Leap days are not involved.
+;
+; SET_CURDATE
+; Entry:       D = Year (0=1980)
+;              H = Month (1...12)
+;              L = Day (1...31)
+; Returns:    None
+; Corrupts:   AF,BC,HL
+;
+SET_CURDATE:
+		srl	h	; H:00000 m3m2m1 Cy:m0
+		ld	a,d
+		rla	; A:y6y5y4y3y2y1y0m0
+		ld	b,a
+		ld	a,h
+		rrca
+		rrca
+		rrca	;A:m3m2m1 00000
+		or	l
+		ld	c,a	;C:m3m2m1d4d3d2d1d0
+		ld	(CURDATE##),bc
+		ret
+;
+;
+; GET_CURDATETIME
+; Entry:      None
+; Returns:     E = Seconds (0)
+;              C = Minutes (0)
+;              B = Hours (0)
+;              L = Day (1...31)
+;              H = Month (1...12)
+;              D = Year (0=1980)
+; Corrupts:   AF
+;
+GET_CURDATETIME:
+		ld	bc,(CURDATE##)
+		ld	a,c
+		and	31
+		ld	l,a
+		xor	c
+		rlca
+		rlca
+		rlca
+		srl	b
+		ld	d,b
+		rla
+		ld	h,a
+		ld	b,0			;00:00:00
+		ld	c,b
+		ld	e,b
 		ret
 ;
 ;
